@@ -1,0 +1,229 @@
+#!/usr/bin/node
+var dynamo   = require("dynamo-client");
+var fs       = require("fs");
+var Futures  = require("futures");
+var Future   = require("future");
+var host     = "dynamodb.eu-west-1.amazonaws.com";
+var db       = dynamo.createClient(host, {
+    accessKeyId     : process.env.DynamoDBaccessKeyId,
+    secretAccessKey : process.env.DynamoDBsecretAccessKey
+});
+
+var cache = {
+    currentTable: null,
+    tables:       null,
+    lastResult:   null
+};
+
+var providers = {
+    listTables: function(next) {
+        if (null === cache.tables) {
+            db.request("ListTables", null, function(err, data) {
+                cache.tables = data.TableNames;
+                next(data.TableNames);
+            });
+        }
+        else {
+            next(cache.tables);
+        }
+    },
+    scan: function(next, table) {
+        db.request("Scan", { 'TableName': table }, function(err, data) {
+            next(data.Items);
+        });
+    },
+    get: function(next, table, key) {
+        var data = {
+            'TableName': table,
+            'Key': {
+                'HashKeyElement': {}
+            }
+        };
+        var type = isNumber(key) ? 'N' : 'S';
+        data.Key.HashKeyElement[type] = key;
+        db.request("GetItem", data, function(err, data) {
+            next(data.Item);
+        });
+    }
+};
+
+var modifiers = {
+    order: function(next, a) {
+        a = a.sort();
+        next(a);
+    },
+    parseArray: function(next, array) {
+        array.forEach(function(obj) {
+            keys = Object.keys(obj);
+            keys.forEach(function(attr) {
+                var type = 'N';
+                if (obj[attr].S !== undefined) {
+                    type = 'S';
+                }
+                if (type === 'S') {
+                    try {
+                        obj[attr] = JSON.parse(obj[attr][type]);
+                    } catch (e) {
+                        obj[attr] = obj[attr][type];
+                    }
+                } else {
+                    obj[attr] = obj[attr][type];
+                }
+            });
+        });
+        next(array);
+    },
+    parse: function(next, obj) {
+        keys = Object.keys(obj);
+        keys.forEach(function(attr) {
+            var type = 'N';
+            if (obj[attr].S !== undefined) {
+                type = 'S';
+            }
+            if (type === 'S') {
+                try {
+                    obj[attr] = JSON.parse(obj[attr][type]);
+                } catch (e) {
+                    obj[attr] = obj[attr][type];
+                }
+            } else {
+                obj[attr] = obj[attr][type];
+            }
+        });
+        next(obj);
+    },
+    pass: function(next, d) {
+        next(d);
+    }
+};
+
+var consumers = {
+    consume: function(a, cb) {
+        cache.lastResult = a;
+        if (cb) {
+            cb(a);
+        }
+    }
+};
+
+var client = Futures.chainify(providers, modifiers, consumers);
+
+var currentTable = null;
+var cachedTables = null;
+var lastResult   = null;
+
+var commands = {
+    quit: function() {
+        process.stdin.destroy();
+    },
+    tables: function() {
+        var task = this;
+        client.listTables().order().consume(function(data) {
+            console.log("Count: " + data.length);
+            console.log(data);
+            task.fulfill();
+        });
+    },
+    use: function(table) {
+        var task = this;
+        client.listTables().pass().consume(function(tables) {
+            cache.currentTable = null;
+            if (-1 !== tables.indexOf(table)) {
+                cache.currentTable = table;
+                console.log("Using '" + table + "'");
+            }
+            else {
+                console.log("Table '" + table + "' was not found");
+            }
+            task.fulfill();
+        });
+    },
+    scan: function(table) {
+        var task = this;
+        if (!table) {
+            table = cache.currentTable;
+        }
+        if (!table) {
+            console.log("Either 'use' a table or specify a table to scan");
+            task.fulfill();
+            return;
+        }
+        client.scan(table).parseArray().consume(function(data) {
+            console.log(data);
+            console.log("Count: " + data.length);
+            task.fulfill();
+        });
+    },
+    get: function(key, from, table) {
+        var task = this;
+        if (table && !/^from/i.test(from)) {
+            console.log("syntax: get {key}[ from {table}]");
+            task.fulfill();
+            return;
+        }
+        if (!table) {
+            table = cache.currentTable;
+        }
+        if (!table) {
+            console.log("Either 'use' a table or specify a table to scan");
+            task.fulfill();
+            return;
+        }
+        client.get(table, key).parse().consume(function(item) {
+            console.log(item);
+            task.fulfill();
+        });
+    },
+    save: function(as, filename) {
+        var task = this;
+        if (!/^as/i.test(as)) {
+            console.log("syntax: save as {filename}");
+            task.fulfill();
+            return;
+        }
+        else {
+            fs.writeFile(filename, JSON.stringify(cache.lastResult, null, 2));
+            console.log("Saved to " + filename);
+        }
+        task.fulfill();
+    },
+    help: function() {
+        Object.keys(commands).forEach(function(fn) {
+            if (fn !== 'help') {
+                console.log(fn);
+            }
+        });
+        this.fulfill();
+    }
+};
+
+
+var router = function (input) {
+    var args    = input.trim().split(' ');
+    var command = args.shift();
+    future = Future.create();
+    future.when(function() {
+        process.stdout.write('> ');
+    });
+    if (commands[command]) {
+        commands[command].apply(future, args);
+    }
+    else {
+        if (command !== '') {
+            process.stdout.write("'" + command.trim() + "' is an undefined action\n");
+        }
+        future.fulfill();
+    }
+};
+
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
+process.stdin.resume();
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', router);
+process.stdin.on('close', function() {
+    process.stdout.write("\nGoodbye ☺\n");
+});
+process.stdout.write('> ');

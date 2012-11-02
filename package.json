@@ -1,0 +1,27 @@
+{
+    "name"        : "DynamoDBShell",
+    "version"     : "0.1.0-1",
+    "description" : "Amazon DynamoDB shell",
+    "author"      : "Sid Karunaratne <sid@karunaratne.net>",
+    "repository" : {
+        "type"   : "git",
+        "url"    : "http://github.com/sakaru/FrozenSynapseClient.git"
+    },
+    "bin": {
+        "dynamoshell" : "./bin/dynamodbshell"
+    },
+    "keywords" : [
+        "cli",
+        "dynamodb",
+        "dynamo",
+        "amazon"
+    ],
+    "dependencies": {
+        "dynamo-client": ">= 0.2.2",
+        "chainify"     : ">= 2.1.1",
+        "futures"      : ">= 2.3.1",
+        "future"       : ">= 2.3.1"
+    },
+    "scripts": {},
+    "license": "MIT"
+}
