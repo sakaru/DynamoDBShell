@@ -1,11 +1,15 @@
 {
     "name"        : "DynamoDBShell",
-    "version"     : "0.1.0-1",
+    "version"     : "0.1.0-2",
     "description" : "Amazon DynamoDB shell",
     "author"      : "Sid Karunaratne <sid@karunaratne.net>",
     "repository" : {
         "type"   : "git",
-        "url"    : "http://github.com/sakaru/FrozenSynapseClient.git"
+        "url"    : "http://github.com/sakaru/DynamoDBShell.git"
+    },
+    "bugs": {
+        "url"   : "http://github.com/sakaru/DynamoDBShell/issues",
+        "email" : "sid@karunaratne.net"
     },
     "bin": {
         "dynamoshell" : "./bin/dynamodbshell"
