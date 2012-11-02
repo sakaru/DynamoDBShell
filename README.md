@@ -4,7 +4,7 @@ DynamoDBShell
 NodeJS shell for Amazon DynamoDB
 
 Usage:
-```
+```bash
 $ sudo npm install -g DynamoDBShell
 # The exports can be put into your ~/.bashrc
 $ export DynamoDBaccessKeyId=123456
