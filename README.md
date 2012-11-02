@@ -10,10 +10,6 @@ $ sudo npm install -g DynamoDBShell
 $ export DynamoDBaccessKeyId=123456
 $ export DynamoDBsecretAccessKey=1234567890
 $ dynamodbshell
-> scan tables
-[ { foo: 'bar', baz: 'foobar' },
-  { foo: 123, baz: 456 } ]
-Count: 2
 > scan foos
 [ { foo: 'bar', baz: 'foobar' },
   { foo: 123, baz: 456 } ]
