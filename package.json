@@ -1,6 +1,6 @@
 {
     "name"        : "DynamoDBShell",
-    "version"     : "0.1.0-2",
+    "version"     : "0.2.0-1",
     "description" : "Amazon DynamoDB shell",
     "author"      : "Sid Karunaratne <sid@karunaratne.net>",
     "repository" : {

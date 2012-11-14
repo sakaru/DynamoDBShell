@@ -42,7 +42,12 @@ var providers = {
         var type = isNumber(key) ? 'N' : 'S';
         data.Key.HashKeyElement[type] = key;
         db.request("GetItem", data, function(err, data) {
-            next(data.Item);
+            if (data.Item === undefined) {
+                next(null);
+            }
+            else {
+                next(data.Item);
+            }
         });
     }
 };
@@ -74,6 +79,10 @@ var modifiers = {
         next(array);
     },
     parse: function(next, obj) {
+        if (obj === null) {
+            next(obj);
+            return;
+        }
         keys = Object.keys(obj);
         keys.forEach(function(attr) {
             var type = 'N';
